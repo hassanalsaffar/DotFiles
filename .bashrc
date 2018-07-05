@@ -20,3 +20,5 @@ fi
 # Change the xterm title to match our prompt
 printf "\033]0;%s\007" "${HOSTNAME%%.*}"
 
+# VIM is the default text editor
+export EDITOR=vim
