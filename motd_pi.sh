@@ -1,136 +1,102 @@
 #!/bin/bash
 
+# --- Colors ---
+RED='\e[31m'
+GREEN='\e[32m'
+YELLOW='\e[33m'
+CYAN='\e[36m'
+GRAY='\e[90m'
+RESET='\e[0m'
+
+# --- Config ---
+WIDTH=78
+BORDER_COLOR=$RED
+LABEL_COLOR=$YELLOW
+TEXT_COLOR=$CYAN
+
+# --- Helper Functions ---
+
+draw_bar() {
+    local percentage=$1
+    local bar_width=20
+    local filled=$(( (percentage * bar_width) / 100 ))
+    local empty=$(( bar_width - filled ))
+    
+    local color=$GREEN
+    if [ $percentage -gt 80 ]; then color=$RED; elif [ $percentage -gt 50 ]; then color=$YELLOW; fi
+
+    printf "["
+    printf "${color}"
+    for ((i=0; i<filled; i++)); do printf "┃"; done
+    printf "${GRAY}"
+    for ((i=0; i<empty; i++)); do printf " "; done
+    printf "${RESET}] %3d%%" "$percentage"
+}
+
+sec2time() {
+    local T=$1
+    local D=$((T/86400)); local H=$((T/3600%24)); local M=$((T/60%60))
+    local d_s="s"; [[ $D -eq 1 ]] && d_s=""
+    local h_s="s"; [[ $H -eq 1 ]] && h_s=""
+    local m_s="s"; [[ $M -eq 1 ]] && m_s=""
+    echo "$D day$d_s, $H hour$h_s, $M minute$m_s"
+}
+
+# --- Data Gathering ---
+ME=$(whoami)
+DATE_NOW=$(date +"%A, %d %B %Y, %T")
+UP_SEC=$(cut -d "." -f 1 /proc/uptime)
+BOOT_TIME=$(date -d "@$(grep btime /proc/stat | cut -d ' ' -f 2)" +"%d-%m-%Y %H:%M:%S")
+
+MEM_INFO=$(free | awk 'NR==2{printf "%d %d", $3, $2}')
+MEM_USED=$(echo $MEM_INFO | cut -d' ' -f1)
+MEM_TOTAL=$(echo $MEM_INFO | cut -d' ' -f2)
+MEM_PERC=$(( MEM_USED * 100 / MEM_TOTAL ))
+
+DISK_PERC=$(df -h ~ | awk 'NR==2 {print $5}' | tr -d '%')
+DISK_INFO=$(df -h ~ | awk 'NR==2 {printf "Used: %s / Total: %s", $3, $2}')
+
+if command -v vcgencmd >/dev/null; then
+    TEMP=$(vcgencmd measure_temp | grep -oP '\d+\.\d+')
+else
+    TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000}')
+fi
+TEMP_ROUND=${TEMP%.*}
+TEMP_PERC=$(( TEMP_ROUND * 100 / 85 ))
+
+# --- Drawing ---
 clear
 
-function color (){
-  echo "\e[$1m$2\e[0m"
-}
+# Top Border (No vertical bar at the end)
+printf "${BORDER_COLOR}┏$(printf '━%.0s' $(seq 1 $WIDTH))┓${RESET}\n\n"
 
-function extend (){
-  local str="$1"
-  let spaces=60-${#1}
-  while [ $spaces -gt 0 ]; do
-    str="$str "
-    let spaces=spaces-1
-  done
-  echo "$str"
-}
+# Logo
+printf "${GREEN}%-28s${RESET}\n" "          .~~.   .~~."
+printf "${GREEN}%-28s${RESET}\n" "         '. \ ' ' / .'"
+printf "${RED}%-28s %-50s${RESET}\n" "          .~ .~~~..~.                _                        _     " ""
+printf "${RED}%-28s %-50s${RESET}\n" "         : .~.'~'.~. :    ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|    " ""
+printf "${RED}%-28s %-50s${RESET}\n" "          ~ (   ) (   ) ~   |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |    " ""
+printf "${RED}%-28s %-50s${RESET}\n" "         ( : '~'.~.'~' : )  |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|    " ""
+printf "${RED}%-28s %-50s${RESET}\n" "          ~ .~ (   ) ~. ~               |_|                  |___|  |_|          " ""
 
-function center (){
-  local str="$1"
-  let spacesLeft=(78-${#1})/2
-  let spacesRight=78-spacesLeft-${#1}
-  while [ $spacesLeft -gt 0 ]; do
-    str=" $str"
-    let spacesLeft=spacesLeft-1
-  done
-  
-  while [ $spacesRight -gt 0 ]; do
-    str="$str "
-    let spacesRight=spacesRight-1
-  done
-  
-  echo "$str"
-}
+echo -e "\n"
 
-function sec2time (){
-  local input=$1
-  
-  if [ $input -lt 60 ]; then
-    echo "$input seconds"
-  else
-    ((days=input/86400))
-    ((input=input%86400))
-    ((hours=input/3600))
-    ((input=input%3600))
-    ((mins=input/60))
-    
-    local daysPlural="s"
-    local hoursPlural="s"
-    local minsPlural="s"
-    
-    if [ $days -eq 1 ]; then
-      daysPlural=""
-    fi
-    
-    if [ $hours -eq 1 ]; then
-      hoursPlural=""
-    fi
-    
-    if [ $mins -eq 1 ]; then
-      minsPlural=""
-    fi
-    
-    echo "$days day$daysPlural, $hours hour$hoursPlural, $mins minute$minsPlural"
-  fi
-}
+# Greetings (Centered)
+GREET="Welcome back, $ME!"
+printf "%$(( (WIDTH - ${#GREET}) / 2 ))s${TEXT_COLOR}%s${RESET}\n" "" "$GREET"
+printf "%$(( (WIDTH - ${#DATE_NOW}) / 2 ))s${TEXT_COLOR}%s${RESET}\n" "" "$DATE_NOW"
 
-borderColor=31
-headerLeafColor=32
-headerRaspberryColor=31
-greetingsColor=36
-statsLabelColor=33
+echo -e "\n"
 
-borderLine="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-borderTopLine=$(color $borderColor "┏$borderLine┓")
-borderBottomLine=$(color $borderColor "┗$borderLine┛")
-borderBar=$(color $borderColor "┃")
-borderEmptyLine="$borderBar                                                                              $borderBar"
+# Stats Section
+printf "  ${LABEL_COLOR}%-16s${RESET} %s\n" "Uptime:" "$(sec2time $UP_SEC)"
+printf "  ${LABEL_COLOR}%-16s${RESET} %s\n" "Booted:" "$BOOT_TIME"
+echo ""
+printf "  ${LABEL_COLOR}%-16s${RESET} %-25s %-33s\n" "Memory usage:" "$(draw_bar $MEM_PERC)" "$((MEM_USED/1024))MB / $((MEM_TOTAL/1024))MB"
+printf "  ${LABEL_COLOR}%-16s${RESET} %-25s %-33s\n" "Disk usage:" "$(draw_bar $DISK_PERC)" "$DISK_INFO"
+printf "  ${LABEL_COLOR}%-16s${RESET} %-25s %-33s\n" "Temperature:" "$(draw_bar $TEMP_PERC)" "${TEMP}ºC"
 
-# Header
-header="$borderTopLine\n$borderEmptyLine\n"
-header="$header$borderBar$(color $headerLeafColor "          .~~.   .~~.                                                         ")$borderBar\n"
-header="$header$borderBar$(color $headerLeafColor "         '. \ ' ' / .'                                                        ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "          .~ .~~~..~.                      _                          _       ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "         : .~.'~'.~. :     ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|      ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "        ~ (   ) (   ) ~   |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |      ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "       ( : '~'.~.'~' : )  |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|      ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "        ~ .~ (   ) ~. ~               |_|                 |___|  |_|          ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "         (  : '~' :  )                                                        ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "          '~ .~~~. ~'                                                         ")$borderBar\n"
-header="$header$borderBar$(color $headerRaspberryColor "              '~'                                                             ")$borderBar"
+echo -e "\n"
 
-me=$(whoami)
-
-# Greetings
-greetings="$borderBar$(color $greetingsColor "$(center "Welcome back, $me!")")$borderBar\n"
-greetings="$greetings$borderBar$(color $greetingsColor "$(center "$(date +"%A, %d %B %Y, %T")")")$borderBar"
-
-# System information
-read loginFrom loginIP loginDate <<< $(last $me --time-format iso -2 | awk 'NR==2 { print $2,$3,$4 }')
-
-# TTY login
-if [[ $loginDate == - ]]; then
-  loginDate=$loginIP
-  loginIP=$loginFrom
-fi
-
-if [[ $loginDate == *T* ]]; then
-  login="$(date -d $loginDate +"%A, %d %B %Y, %T") ($loginIP)"
-else
-  # Not enough logins
-  login="None"
-fi
-
-label1="$(extend "$login")"
-label1="$borderBar  $(color $statsLabelColor "Last Login....:") $label1$borderBar"
-
-uptime="$(sec2time $(cut -d "." -f 1 /proc/uptime))"
-uptime="$uptime ($(date -d "@"$(grep btime /proc/stat | cut -d " " -f 2) +"%d-%m-%Y %H:%M:%S"))"
-
-label2="$(extend "$uptime")"
-label2="$borderBar  $(color $statsLabelColor "Uptime........:") $label2$borderBar"
-
-label3="$(extend "$(free -m | awk 'NR==2 { printf "Total: %sMB, Used: %sMB, Free: %sMB",$2,$3,$4; }')")"
-label3="$borderBar  $(color $statsLabelColor "Memory........:") $label3$borderBar"
-
-label4="$(extend "$(df -h ~ | awk 'NR==2 { printf "Total: %sB, Used: %sB, Free: %sB",$2,$3,$4; }')")"
-label4="$borderBar  $(color $statsLabelColor "Home space....:") $label4$borderBar"
-
-label5="$(extend "$(/opt/vc/bin/vcgencmd measure_temp | cut -c "6-9")ºC")"
-label5="$borderBar  $(color $statsLabelColor "Temperature...:") $label5$borderBar"
-
-stats="$label1\n$label2\n$label3\n$label4\n$label5"
-
-# Print motd
-echo -e "$header\n$borderEmptyLine\n$greetings\n$borderEmptyLine\n$stats\n$borderEmptyLine\n$borderBottomLine"       
+# Bottom Border (No vertical bar at the end)
+printf "${BORDER_COLOR}┗$(printf '━%.0s' $(seq 1 $WIDTH))┛${RESET}\n"
