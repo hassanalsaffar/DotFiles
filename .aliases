@@ -1,22 +1,44 @@
-# Colored ls and grep
-alias ls='command ls --color=auto'
-alias grep='command grep --color=auto'
+# ==========================================
+#  COLORED LS AND GREP
+# ==========================================
+# Enable colors, group directories first, and add file type indicators
+alias ls='ls --color=auto --group-directories-first -F'
+alias grep='grep --color=auto --exclude-dir={.git,node_modules,venv}'
 
-# Directory Listings
-alias ll='ls -lhrt'
+# ==========================================
+#  DIRECTORY LISTINGS & NAVIGATION
+# ==========================================
+alias ll='ls -lhrt'       # Long format, human-readable, reverse time sort
+alias la='ls -A'          # Show hidden files (except . and ..)
+alias ..='cd ..'
+alias ...='cd ../..'
 
-# Default to human readable figures
+# ==========================================
+#  SYSTEM UTILITIES (Human Readable)
+# ==========================================
 alias df='df -h'
 alias du='du -h'
+alias free='free -m'      # Show memory in MB
 
-# IP Addresses
-alias publicip='dig +short -4 myip.opendns.com @resolver1.opendns.com'
+# ==========================================
+#  IP ADDRESSES (Interface Agnostic)
+# ==========================================
+# Public IP using a simple curl
+alias publicip='curl -s https://ifconfig.me'
 alias publicip6='dig +short -6 myip.opendns.com AAAA @resolver1.ipv6-sandbox.opendns.com'
-alias privateip='ip -4 -o addr show eth0 | egrep -o "([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}" | head -n 1'
 
-# Allow for dotfiles to be updated
-alias update_dotfiles='cd ~ && curl -Lk# https://github.com/hassanalsaffar/DotFiles/tarball/master | tar --strip-components 1 -xz && source .bash_profile'
+# Private IP: Grabs the primary internal IP regardless of interface name (eth0/wlan0/enp)
+alias privateip="hostname -I | awk '{print \$1}'"
 
-# Snort 
-alias snort-rules-check='if [ test `find "/etc/snort/rules/sid-msg.map" -mmin +2880` ] ; then echo "Ok"; else echo "Old"; fi'
-alias snort-rules-update='/usr/bin/perl /usr/local/bin/pulledpork.pl -c /etc/snort/pulledpork.conf -l'
+# ==========================================
+#  DOTFILES MANAGEMENT
+# ==========================================
+# Downloads tarball, strips components, and restarts the shell session
+alias update_dotfiles='cd ~ && curl -Lk# https://github.com/hassanalsaffar/DotFiles/tarball/master | tar --strip-components 1 -xz && exec $SHELL'
+
+# ==========================================
+#  SAFETY NETS
+# ==========================================
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
