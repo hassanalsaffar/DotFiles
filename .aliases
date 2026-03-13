@@ -1,44 +1,78 @@
 # ==========================================
-#  COLORED LS AND GREP
+#  SYSTEM DETECTION & SMART COLOR LS
 # ==========================================
-# Enable colors, group directories first, and add file type indicators
-alias ls='ls --color=auto --group-directories-first -F'
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS specific ls
+    alias ls='command ls -G -F'
+    export CLICOLOR=1
+else
+    # Linux specific ls
+    alias ls='command ls --color=auto --group-directories-first -F'
+fi
+
 alias grep='grep --color=auto --exclude-dir={.git,node_modules,venv}'
 
 # ==========================================
 #  DIRECTORY LISTINGS & NAVIGATION
 # ==========================================
-alias ll='ls -lhrt'       # Long format, human-readable, reverse time sort
-alias la='ls -A'          # Show hidden files (except . and ..)
+alias ll='ls -lhrt'
+alias la='ls -A'
 alias ..='cd ..'
 alias ...='cd ../..'
 
 # ==========================================
-#  SYSTEM UTILITIES (Human Readable)
+#  MAC OS SPECIFIC TOOLS
+# ==========================================
+# Flush DNS based on OS Version
+case "$OSTYPE" in
+    darwin14*)
+        alias flushdns='which discoveryutil && discoveryutil mdnsflushcache || killall -HUP mDNSResponder'
+        ;;
+    darwin10*)
+        alias flushdns='dscacheutil -flushcache'
+        ;;
+    darwin*)
+        alias flushdns='sudo killall -HUP mDNSResponder'
+        ;;
+esac
+
+# Hardware Info
+alias serialnumber='ioreg -d2 -k IOPlatformSerialNumber | awk -F\" '\''/IOPlatformSerialNumber/{print $(NF-1)}'\'''
+alias uuid='ioreg -d2 -k IOPlatformUUID | awk -F\" '\''/IOPlatformUUID/{print $(NF-1)}'\'''
+alias uuidgen="uuidgen | tr '[[:upper:]]' '[[:lower:]]'"
+
+# System Services & Control
+alias maclogout="osascript -e 'tell application \"System Events\" to log out'"
+alias nads='launchctl print system | awk -F\t '\''/^[[:blank:]]services = {/,/}/ {if(/{|}/) next; if(/com.apple/) next; printf "%s %s\n", $3,$4}'\'' | sort -k3'
+alias user-nads='launchctl print gui/$(id -u) | awk -F\t '\''/^[[:blank:]]services = {/,/}/ {if(/{|}/) next; if(/com.apple/) next; printf "%s %s\n", $3,$4}'\'' | sort -k3'
+
+# ==========================================
+#  NETWORKING & IP
+# ==========================================
+alias publicip='curl -s https://ifconfig.me'
+alias publicip6='dig +short -6 myip.opendns.com AAAA @resolver1.ipv6-sandbox.opendns.com'
+alias privateip="hostname -I | awk '{print \$1}' 2>/dev/null || ipconfig getifaddr en0"
+
+# ==========================================
+#  DATE & TIME
+# ==========================================
+alias now='date +%Y%m%dT%H%M%S'
+alias today='date +%F'
+
+# ==========================================
+#  DEVELOPER TOOLS
+# ==========================================
+alias kraken='open gitkraken://repo/$PWD'
+alias update_dotfiles='cd ~ && curl -Lk# https://github.com/hassanalsaffar/DotFiles/tarball/master | tar --strip-components 1 -xz && exec $SHELL'
+
+# Open man pages in a GUI window
+function xman() { open x-man-page://$@ ; }
+
+# ==========================================
+#  SAFETY & UTILS
 # ==========================================
 alias df='df -h'
 alias du='du -h'
-alias free='free -m'      # Show memory in MB
-
-# ==========================================
-#  IP ADDRESSES (Interface Agnostic)
-# ==========================================
-# Public IP using a simple curl
-alias publicip='curl -s https://ifconfig.me'
-alias publicip6='dig +short -6 myip.opendns.com AAAA @resolver1.ipv6-sandbox.opendns.com'
-
-# Private IP: Grabs the primary internal IP regardless of interface name (eth0/wlan0/enp)
-alias privateip="hostname -I | awk '{print \$1}'"
-
-# ==========================================
-#  DOTFILES MANAGEMENT
-# ==========================================
-# Downloads tarball, strips components, and restarts the shell session
-alias update_dotfiles='cd ~ && curl -Lk# https://github.com/hassanalsaffar/DotFiles/tarball/master | tar --strip-components 1 -xz && exec $SHELL'
-
-# ==========================================
-#  SAFETY NETS
-# ==========================================
 alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
